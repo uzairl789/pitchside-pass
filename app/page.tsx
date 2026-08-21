@@ -6,7 +6,7 @@ export default function Home() {
     <main className="min-h-screen overflow-hidden bg-[#020604] text-white">
       {/* NAVIGATION */}
       <header className="border-b border-white/[0.06] bg-[#020604]">
-        <div className="mx-auto flex h-24 max-w-[1400px] items-center justify-between px-6 lg:px-10">
+        <div className="mx-auto flex h-20 max-w-[1400px] items-center justify-between px-5 sm:h-24 sm:px-6 lg:px-10">
           <Link href="/" className="flex items-center">
             <Image
               src="/pitchside-logo.png"
@@ -14,29 +14,41 @@ export default function Home() {
               width={240}
               height={90}
               priority
-              className="h-[72px] w-auto"
+              className="h-[58px] w-auto sm:h-[72px]"
             />
           </Link>
 
           <nav className="hidden items-center gap-10 text-xs font-semibold tracking-wide text-neutral-300 md:flex">
-            <a href="#features" className="transition hover:text-white">
+            <a
+              href="#features"
+              className="transition hover:text-white"
+            >
               FEATURES
             </a>
 
-            <a href="#how-it-works" className="transition hover:text-white">
+            <a
+              href="#how-it-works"
+              className="transition hover:text-white"
+            >
               HOW IT WORKS
             </a>
 
-            <a href="#pricing" className="transition hover:text-white">
+            <a
+              href="#pricing"
+              className="transition hover:text-white"
+            >
               MEMBERSHIP
             </a>
 
-            <a href="#faq" className="transition hover:text-white">
+            <a
+              href="#faq"
+              className="transition hover:text-white"
+            >
               FAQ
             </a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Link
               href="/login"
               className="hidden text-xs font-semibold text-neutral-300 transition hover:text-white sm:block"
@@ -46,7 +58,7 @@ export default function Home() {
 
             <Link
               href="/login"
-              className="rounded-md bg-[#176b3f] px-7 py-3 text-xs font-bold transition hover:bg-[#208151]"
+              className="rounded-md bg-[#176b3f] px-5 py-3 text-xs font-bold transition hover:bg-[#208151] sm:px-7"
             >
               GET ACCESS
             </Link>
@@ -56,12 +68,16 @@ export default function Home() {
 
       {/* HERO */}
       <section className="relative">
-        <div className="pointer-events-none absolute left-[35%] top-[20%] h-[600px] w-[600px] rounded-full bg-[#0f5d39]/12 blur-[180px]" />
+        {/*
+          Heavy blurred background only rendered on desktop.
+          Mobile Safari no longer has to rasterise this before the hero paints.
+        */}
+        <div className="pointer-events-none absolute left-[35%] top-[20%] hidden h-[600px] w-[600px] rounded-full bg-[#0f5d39]/12 blur-[180px] lg:block" />
 
-        <div className="mx-auto grid min-h-[650px] max-w-[1400px] items-center gap-10 px-6 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:px-10">
-          {/* LEFT */}
-          <div>
-            <h1 className="text-[54px] font-black uppercase leading-[0.92] tracking-[-0.055em] sm:text-[72px] lg:text-[82px]">
+        <div className="mx-auto grid min-h-[520px] max-w-[1400px] items-center gap-8 px-5 py-12 sm:px-6 sm:py-14 lg:min-h-[650px] lg:grid-cols-[0.9fr_1.1fr] lg:gap-10 lg:px-10">
+          {/* HERO COPY */}
+          <div className="relative z-10">
+            <h1 className="text-[48px] font-black uppercase leading-[0.92] tracking-[-0.055em] sm:text-[72px] lg:text-[82px]">
               YOUR PASS TO
 
               <span className="mt-2 block text-[#35b96f]">
@@ -69,7 +85,7 @@ export default function Home() {
               </span>
             </h1>
 
-            <p className="mt-6 max-w-[520px] text-lg leading-7 text-neutral-300">
+            <p className="mt-5 max-w-[520px] text-base leading-7 text-neutral-300 sm:mt-6 sm:text-lg">
               Instant ticket alerts. Face-value seats.
               <br />
 
@@ -78,10 +94,10 @@ export default function Home() {
               </span>
             </p>
 
-            <div className="mt-8 flex items-center gap-6">
+            <div className="mt-7 flex items-center gap-5 sm:mt-8 sm:gap-6">
               <Link
                 href="/login"
-                className="rounded-md bg-[#176b3f] px-10 py-4 text-sm font-bold transition hover:bg-[#208151]"
+                className="rounded-md bg-[#176b3f] px-8 py-4 text-sm font-bold transition hover:bg-[#208151] sm:px-10"
               >
                 GET ACCESS
               </Link>
@@ -94,8 +110,8 @@ export default function Home() {
               </a>
             </div>
 
-            {/* TRUST GRID */}
-            <div className="mt-9 grid max-w-[560px] grid-cols-2 gap-y-5 border-t border-white/[0.08] pt-6 sm:grid-cols-4">
+            {/* TRUST POINTS */}
+            <div className="mt-8 grid max-w-[560px] grid-cols-2 gap-x-4 gap-y-5 border-t border-white/[0.08] pt-5 sm:mt-9 sm:grid-cols-4 sm:pt-6">
               <TrustMini
                 icon="◇"
                 label="Official ticket links"
@@ -119,30 +135,39 @@ export default function Home() {
           </div>
 
           {/* PHONE */}
-          <div className="relative flex min-h-[600px] items-center justify-center">
-            <div className="pointer-events-none absolute bottom-[30px] h-[120px] w-[400px] rounded-full bg-[#2fa66a]/20 blur-[55px]" />
+          <div className="relative mt-3 flex min-h-[430px] items-center justify-center sm:min-h-[540px] lg:mt-0 lg:min-h-[600px]">
+            {/*
+              Phone glow disabled on mobile.
+            */}
+            <div className="pointer-events-none absolute bottom-[30px] hidden h-[120px] w-[400px] rounded-full bg-[#2fa66a]/20 blur-[55px] sm:block" />
 
             <div className="relative">
-              <div className="relative w-[300px] rounded-[46px] border border-white/[0.16] bg-[#070907] p-[8px] shadow-[0_40px_100px_rgba(0,0,0,0.7)] sm:w-[330px]">
-                <div className="absolute -left-[4px] top-[110px] h-12 w-[4px] rounded-l bg-neutral-700" />
+              <div className="relative w-[255px] rounded-[40px] border border-white/[0.14] bg-[#070907] p-[7px] shadow-[0_20px_45px_rgba(0,0,0,0.45)] sm:w-[300px] sm:rounded-[44px] sm:p-[8px] sm:shadow-[0_35px_80px_rgba(0,0,0,0.65)] lg:w-[330px] lg:rounded-[46px] lg:shadow-[0_40px_100px_rgba(0,0,0,0.7)]">
+                {/* PHONE BUTTONS */}
+                <div className="absolute -left-[4px] top-[95px] h-10 w-[4px] rounded-l bg-neutral-700 sm:top-[110px] sm:h-12" />
 
-                <div className="absolute -left-[4px] top-[170px] h-16 w-[4px] rounded-l bg-neutral-700" />
+                <div className="absolute -left-[4px] top-[145px] h-14 w-[4px] rounded-l bg-neutral-700 sm:top-[170px] sm:h-16" />
 
-                <div className="absolute -right-[4px] top-[145px] h-20 w-[4px] rounded-r bg-neutral-700" />
+                <div className="absolute -right-[4px] top-[125px] h-16 w-[4px] rounded-r bg-neutral-700 sm:top-[145px] sm:h-20" />
 
-                <div className="relative aspect-[9/19.5] overflow-hidden rounded-[38px] bg-black">
-                  <div className="absolute left-1/2 top-3 z-20 h-[23px] w-[78px] -translate-x-1/2 rounded-full bg-black" />
+                {/* SCREEN */}
+                <div className="relative aspect-[9/19.5] overflow-hidden rounded-[34px] bg-black sm:rounded-[38px]">
+                  <div className="absolute left-1/2 top-3 z-20 h-[20px] w-[68px] -translate-x-1/2 rounded-full bg-black sm:h-[23px] sm:w-[78px]" />
 
+                  {/*
+                    IMPORTANT FOR MOBILE LCP:
+                    no priority and no unoptimized.
+                    The headline gets the browser's attention first.
+                  */}
                   <Image
-  src="/alerts.jpeg"
-  alt="Pitchside Pass alerts"
-  fill
-  sizes="(max-width: 640px) 300px, 330px"
-  priority
-  className="object-cover object-top"
-/>
+                    src="/alerts.jpeg"
+                    alt="Pitchside Pass alerts"
+                    fill
+                    sizes="(max-width: 640px) 255px, (max-width: 1024px) 300px, 330px"
+                    className="object-cover object-top"
+                  />
 
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/35 to-transparent sm:h-16" />
                 </div>
               </div>
             </div>
@@ -150,9 +175,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* REAL TIME AVAILABILITY */}
-      <section className="px-6 pb-6 lg:px-10">
-        <div className="mx-auto grid max-w-[1280px] gap-10 rounded-2xl border border-white/[0.08] bg-[#07100c] p-8 lg:grid-cols-2 lg:p-10">
+      {/* REAL-TIME AVAILABILITY */}
+      <section className="px-5 pb-5 sm:px-6 sm:pb-6 lg:px-10">
+        <div className="mx-auto grid max-w-[1280px] gap-10 rounded-2xl border border-white/[0.08] bg-[#07100c] p-6 sm:p-8 lg:grid-cols-2 lg:p-10">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#39bd76]">
               REAL-TIME AVAILABILITY
@@ -165,8 +190,9 @@ export default function Home() {
             </h2>
 
             <p className="mt-5 max-w-md text-sm leading-6 text-neutral-400">
-              When ticket availability changes, Pitchside Pass detects it and
-              sends the relevant information straight to Discord.
+              When ticket availability changes, Pitchside
+              Pass detects it and sends the relevant
+              information straight to Discord.
             </p>
 
             <div className="mt-7 space-y-4">
@@ -191,14 +217,14 @@ export default function Home() {
           </div>
 
           <div className="flex items-center justify-center">
-            <div className="w-full max-w-[470px] rounded-2xl border border-white/[0.09] bg-[#0a1510] p-6">
-              <div className="flex items-start justify-between">
+            <div className="w-full max-w-[470px] rounded-2xl border border-white/[0.09] bg-[#0a1510] p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold tracking-[0.1em] text-neutral-300">
                     • TICKETS AVAILABLE
                   </p>
 
-                  <p className="mt-2 text-2xl font-bold">
+                  <p className="mt-2 text-xl font-bold sm:text-2xl">
                     Manchester United
                   </p>
                 </div>
@@ -238,15 +264,19 @@ export default function Home() {
       </section>
 
       {/* FEATURES */}
-      <section id="features" className="px-6 py-5 lg:px-10">
-        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-8">
+      <section
+        id="features"
+        className="px-5 py-4 sm:px-6 sm:py-5 lg:px-10"
+      >
+        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-6 sm:p-8">
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#39bd76]">
               BUILT FOR SPEED
             </p>
 
             <h2 className="mt-3 text-2xl font-bold sm:text-3xl">
-              The information you need. Nothing you don&apos;t.
+              The information you need. Nothing you
+              don&apos;t.
             </h2>
           </div>
 
@@ -278,9 +308,9 @@ export default function Home() {
       {/* HOW IT WORKS */}
       <section
         id="how-it-works"
-        className="px-6 py-5 lg:px-10"
+        className="px-5 py-4 sm:px-6 sm:py-5 lg:px-10"
       >
-        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-8">
+        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-6 sm:p-8">
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#39bd76]">
               HOW IT WORKS
@@ -321,8 +351,11 @@ export default function Home() {
       </section>
 
       {/* MEMBERSHIP */}
-      <section id="pricing" className="px-6 py-5 lg:px-10">
-        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-8">
+      <section
+        id="pricing"
+        className="px-5 py-4 sm:px-6 sm:py-5 lg:px-10"
+      >
+        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-6 sm:p-8">
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#39bd76]">
               MEMBERSHIP
@@ -333,8 +366,8 @@ export default function Home() {
             </h2>
 
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-neutral-500">
-              Select your club and get instant home ticket alerts delivered
-              directly to Discord.
+              Select your club and get instant home ticket
+              alerts delivered directly to Discord.
             </p>
           </div>
 
@@ -345,20 +378,20 @@ export default function Home() {
               logo="/lfc-logo.png"
             />
 
-            {/* MANCHESTER UNITED */}
-            <div className="relative flex h-full flex-col rounded-xl border border-[#2e915b] bg-[#09150f] p-7 shadow-[0_20px_70px_rgba(16,105,61,0.12)]">
+            {/* MUFC */}
+            <div className="relative flex h-full flex-col rounded-xl border border-[#2e915b] bg-[#09150f] p-6 shadow-[0_16px_45px_rgba(16,105,61,0.08)] sm:p-7 sm:shadow-[0_20px_70px_rgba(16,105,61,0.12)]">
               <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#42b976]/25 bg-[#163d29] px-4 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-[#78dda3]">
                 AVAILABLE NOW
               </div>
 
-              {/* CLUB HEADER */}
               <div className="flex min-h-[78px] items-center gap-4">
-                <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center">
+                <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center sm:h-[68px] sm:w-[68px]">
                   <Image
                     src="/mufc-logo.png"
                     alt="Manchester United"
                     width={68}
                     height={68}
+                    sizes="68px"
                     className="max-h-[68px] w-auto object-contain grayscale brightness-[2] contrast-125"
                   />
                 </div>
@@ -413,8 +446,11 @@ export default function Home() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="px-6 py-5 lg:px-10">
-        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-8">
+      <section
+        id="faq"
+        className="px-5 py-4 sm:px-6 sm:py-5 lg:px-10"
+      >
+        <div className="mx-auto max-w-[1280px] rounded-2xl border border-white/[0.08] bg-[#07100c] p-6 sm:p-8">
           <div className="text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#39bd76]">
               FAQ
@@ -446,13 +482,14 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer className="mt-5 border-t border-white/[0.06]">
-        <div className="mx-auto max-w-[1280px] px-6 py-9 lg:px-10">
+        <div className="mx-auto max-w-[1280px] px-5 py-8 sm:px-6 sm:py-9 lg:px-10">
           <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
             <Image
               src="/pitchside-logo.png"
               alt="Pitchside Pass"
               width={150}
               height={50}
+              sizes="150px"
               className="h-[42px] w-auto"
             />
 
@@ -688,15 +725,15 @@ function ComingSoonCard({
   logo: string;
 }) {
   return (
-    <div className="flex h-full flex-col rounded-xl border border-white/[0.08] bg-white/[0.015] p-7">
-      {/* CLUB HEADER */}
+    <div className="flex h-full flex-col rounded-xl border border-white/[0.08] bg-white/[0.015] p-6 sm:p-7">
       <div className="flex min-h-[78px] items-center gap-4">
-        <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center">
+        <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center sm:h-[68px] sm:w-[68px]">
           <Image
             src={logo}
             alt={club}
             width={68}
             height={68}
+            sizes="68px"
             className="max-h-[68px] w-auto object-contain grayscale brightness-[2] contrast-125 opacity-90"
           />
         </div>
