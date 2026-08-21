@@ -2,13 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-const MANAGE_ROLES_PERMISSION = BigInt(1) << BigInt(28);
-
-/* -------------------------------------------------------------------------- */
-/*                        DISCORD TOKEN REFRESH                                */
-/* -------------------------------------------------------------------------- */
+const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY!
+);
 
 type DiscordUserRecord = {
   discord_id: string;
@@ -16,6 +12,10 @@ type DiscordUserRecord = {
   discord_refresh_token: string | null;
   discord_token_expires_at: string | null;
 };
+
+/* -------------------------------------------------------------------------- */
+/* DISCORD TOKEN REFRESH                                                      */
+/* -------------------------------------------------------------------------- */
 
 async function refreshDiscordToken(
   discordUser: DiscordUserRecord
@@ -26,13 +26,11 @@ async function refreshDiscordToken(
     );
   }
 
-  const clientId = process.env.DISCORD_CLIENT_ID!;
-  const clientSecret = process.env.DISCORD_CLIENT_SECRET!;
+  const clientId =
+    process.env.DISCORD_CLIENT_ID!;
 
-  console.log(
-    "Refreshing Discord OAuth token for:",
-    discordUser.discord_id
-  );
+  const clientSecret =
+    process.env.DISCORD_CLIENT_SECRET!;
 
   const body = new URLSearchParams({
     grant_type: "refresh_token",
@@ -57,21 +55,17 @@ async function refreshDiscordToken(
     }
   );
 
-  const responseText = await response.text();
+  const responseText =
+    await response.text();
 
   if (!response.ok) {
-    console.error(
-      "Discord token refresh failed:",
-      response.status,
-      responseText
-    );
-
     throw new Error(
-      `Discord OAuth token refresh failed: ${response.status}`
+      `Discord OAuth token refresh failed: ${response.status} ${responseText}`
     );
   }
 
-  const tokenData = JSON.parse(responseText);
+  const tokenData =
+    JSON.parse(responseText);
 
   if (
     !tokenData.access_token ||
@@ -84,28 +78,30 @@ async function refreshDiscordToken(
 
   const expiresAt = new Date(
     Date.now() +
-      Number(tokenData.expires_in) * 1000
+      Number(tokenData.expires_in) *
+        1000
   ).toISOString();
 
-  const { error } = await supabaseAdmin
-    .from("discord_users")
-    .update({
-      discord_access_token:
-        tokenData.access_token,
+  const { error } =
+    await supabaseAdmin
+      .from("discord_users")
+      .update({
+        discord_access_token:
+          tokenData.access_token,
 
-      discord_refresh_token:
-        tokenData.refresh_token,
+        discord_refresh_token:
+          tokenData.refresh_token,
 
-      discord_token_expires_at:
-        expiresAt,
+        discord_token_expires_at:
+          expiresAt,
 
-      updated_at:
-        new Date().toISOString(),
-    })
-    .eq(
-      "discord_id",
-      discordUser.discord_id
-    );
+        updated_at:
+          new Date().toISOString(),
+      })
+      .eq(
+        "discord_id",
+        discordUser.discord_id
+      );
 
   if (error) {
     throw new Error(
@@ -114,7 +110,7 @@ async function refreshDiscordToken(
   }
 
   console.log(
-    "Discord OAuth token refreshed successfully:",
+    "Discord OAuth token refreshed:",
     discordUser.discord_id
   );
 
@@ -122,8 +118,10 @@ async function refreshDiscordToken(
     ...discordUser,
     discord_access_token:
       tokenData.access_token,
+
     discord_refresh_token:
       tokenData.refresh_token,
+
     discord_token_expires_at:
       expiresAt,
   };
@@ -132,49 +130,34 @@ async function refreshDiscordToken(
 async function ensureValidDiscordToken(
   discordUser: DiscordUserRecord
 ) {
-  if (!discordUser.discord_token_expires_at) {
-    console.log(
-      "Discord token expiry missing — refreshing token"
-    );
-
+  if (
+    !discordUser.discord_token_expires_at
+  ) {
     return refreshDiscordToken(
       discordUser
     );
   }
 
-  const expiresAt =
-    new Date(
-      discordUser.discord_token_expires_at
-    ).getTime();
+  const expiresAt = new Date(
+    discordUser.discord_token_expires_at
+  ).getTime();
 
-  /*
-   * Refresh if token has less than 10 minutes remaining.
-   *
-   * This avoids the token expiring between checking it and
-   * Discord processing the guild join request.
-   */
   const refreshThreshold =
     Date.now() + 10 * 60 * 1000;
 
-  if (expiresAt <= refreshThreshold) {
-    console.log(
-      "Discord access token expired or expiring soon"
-    );
-
+  if (
+    expiresAt <= refreshThreshold
+  ) {
     return refreshDiscordToken(
       discordUser
     );
   }
-
-  console.log(
-    "Discord access token still valid"
-  );
 
   return discordUser;
 }
 
 /* -------------------------------------------------------------------------- */
-/*                              DISCORD JOIN                                   */
+/* DISCORD MEMBERSHIP                                                         */
 /* -------------------------------------------------------------------------- */
 
 async function addDiscordMember(
@@ -187,16 +170,10 @@ async function addDiscordMember(
   const botToken =
     process.env.DISCORD_BOT_TOKEN!;
 
-  console.log(
-    "Attempting to add Discord member:",
-    discordId
-  );
-
   const response = await fetch(
     `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}`,
     {
       method: "PUT",
-
       headers: {
         Authorization:
           `Bot ${botToken}`,
@@ -215,12 +192,6 @@ async function addDiscordMember(
   const responseText =
     await response.text();
 
-  console.log(
-    "Discord member join response:",
-    response.status,
-    responseText
-  );
-
   if (
     response.status !== 201 &&
     response.status !== 204
@@ -236,239 +207,6 @@ async function addDiscordMember(
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/*                         ROLE DIAGNOSTICS                                    */
-/* -------------------------------------------------------------------------- */
-
-async function diagnoseRolePermissions() {
-  const guildId =
-    process.env.DISCORD_SERVER_ID!;
-
-  const roleId =
-    process.env.DISCORD_PAID_ROLE_ID!;
-
-  const botToken =
-    process.env.DISCORD_BOT_TOKEN!;
-
-  console.log(
-    "---- DISCORD ROLE DIAGNOSTIC ----"
-  );
-
-  const botUserResponse =
-    await fetch(
-      "https://discord.com/api/v10/users/@me",
-      {
-        headers: {
-          Authorization:
-            `Bot ${botToken}`,
-        },
-      }
-    );
-
-  const botUserText =
-    await botUserResponse.text();
-
-  if (!botUserResponse.ok) {
-    throw new Error(
-      `Could not fetch bot identity: ${botUserResponse.status} ${botUserText}`
-    );
-  }
-
-  const botUser =
-    JSON.parse(botUserText);
-
-  console.log(
-    "Bot user ID:",
-    botUser.id
-  );
-
-  console.log(
-    "Bot username:",
-    botUser.username
-  );
-
-  const botMemberResponse =
-    await fetch(
-      `https://discord.com/api/v10/guilds/${guildId}/members/${botUser.id}`,
-      {
-        headers: {
-          Authorization:
-            `Bot ${botToken}`,
-        },
-      }
-    );
-
-  const botMemberText =
-    await botMemberResponse.text();
-
-  if (!botMemberResponse.ok) {
-    throw new Error(
-      `Could not fetch bot guild member: ${botMemberResponse.status} ${botMemberText}`
-    );
-  }
-
-  const botMember =
-    JSON.parse(botMemberText);
-
-  console.log(
-    "Bot member role IDs:",
-    botMember.roles
-  );
-
-  const rolesResponse =
-    await fetch(
-      `https://discord.com/api/v10/guilds/${guildId}/roles`,
-      {
-        headers: {
-          Authorization:
-            `Bot ${botToken}`,
-        },
-      }
-    );
-
-  const rolesText =
-    await rolesResponse.text();
-
-  if (!rolesResponse.ok) {
-    throw new Error(
-      `Could not fetch guild roles: ${rolesResponse.status} ${rolesText}`
-    );
-  }
-
-  const roles =
-    JSON.parse(rolesText);
-
-  const paidRole =
-    roles.find(
-      (role: any) =>
-        role.id === roleId
-    );
-
-  if (!paidRole) {
-    throw new Error(
-      `Paid role ${roleId} was not found in this guild`
-    );
-  }
-
-  console.log(
-    "Paid role name:",
-    paidRole.name
-  );
-
-  console.log(
-    "Paid role ID:",
-    paidRole.id
-  );
-
-  console.log(
-    "Paid role position:",
-    paidRole.position
-  );
-
-  console.log(
-    "Paid role managed:",
-    paidRole.managed
-  );
-
-  const botRoles =
-    roles.filter(
-      (role: any) =>
-        botMember.roles.includes(
-          role.id
-        )
-    );
-
-  console.log(
-    "Bot roles:",
-    botRoles.map(
-      (role: any) => ({
-        name: role.name,
-        id: role.id,
-        position:
-          role.position,
-        permissions:
-          role.permissions,
-        managed:
-          role.managed,
-      })
-    )
-  );
-
-  const highestBotRole =
-    [...botRoles].sort(
-      (a: any, b: any) =>
-        b.position -
-        a.position
-    )[0];
-
-  if (!highestBotRole) {
-    throw new Error(
-      "Could not determine bot highest role"
-    );
-  }
-
-  let combinedPermissions =
-    BigInt(0);
-
-  for (
-    const role of botRoles
-  ) {
-    combinedPermissions |=
-      BigInt(
-        role.permissions
-      );
-  }
-
-  const hasManageRoles =
-    (combinedPermissions &
-      MANAGE_ROLES_PERMISSION) ===
-    MANAGE_ROLES_PERMISSION;
-
-  const botAbovePaidRole =
-    highestBotRole.position >
-    paidRole.position;
-
-  console.log(
-    "Bot highest role name:",
-    highestBotRole.name
-  );
-
-  console.log(
-    "Bot highest role position:",
-    highestBotRole.position
-  );
-
-  console.log(
-    "Bot has MANAGE_ROLES:",
-    hasManageRoles
-  );
-
-  console.log(
-    "Bot highest role above paid role:",
-    botAbovePaidRole
-  );
-
-  console.log(
-    "Paid role is integration-managed:",
-    paidRole.managed
-  );
-
-  console.log(
-    "---- END DISCORD ROLE DIAGNOSTIC ----"
-  );
-
-  return {
-    paidRole,
-    highestBotRole,
-    hasManageRoles,
-    botAbovePaidRole,
-  };
-}
-
-/* -------------------------------------------------------------------------- */
-/*                              ADD PAID ROLE                                  */
-/* -------------------------------------------------------------------------- */
-
 async function addDiscordRole(
   discordId: string
 ) {
@@ -481,43 +219,10 @@ async function addDiscordRole(
   const botToken =
     process.env.DISCORD_BOT_TOKEN!;
 
-  const diagnostic =
-    await diagnoseRolePermissions();
-
-  if (
-    diagnostic.paidRole.managed
-  ) {
-    throw new Error(
-      `Paid role "${diagnostic.paidRole.name}" is managed and cannot be assigned manually`
-    );
-  }
-
-  if (
-    !diagnostic.hasManageRoles
-  ) {
-    throw new Error(
-      "Discord bot does not have Manage Roles permission"
-    );
-  }
-
-  if (
-    !diagnostic.botAbovePaidRole
-  ) {
-    throw new Error(
-      `Bot role "${diagnostic.highestBotRole.name}" must be above "${diagnostic.paidRole.name}"`
-    );
-  }
-
-  console.log(
-    "Attempting Pitchside Pass role assignment:",
-    discordId
-  );
-
   const response = await fetch(
     `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
     {
       method: "PUT",
-
       headers: {
         Authorization:
           `Bot ${botToken}`,
@@ -531,69 +236,17 @@ async function addDiscordRole(
   const responseText =
     await response.text();
 
-  console.log(
-    "Discord role response:",
-    response.status,
-    responseText
-  );
-
   if (!response.ok) {
     throw new Error(
       `Discord role assignment failed: ${response.status} ${responseText}`
     );
   }
 
-  const verifyResponse =
-    await fetch(
-      `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}`,
-      {
-        headers: {
-          Authorization:
-            `Bot ${botToken}`,
-        },
-      }
-    );
-
-  const verifyText =
-    await verifyResponse.text();
-
-  if (!verifyResponse.ok) {
-    throw new Error(
-      `Could not verify Discord member roles: ${verifyResponse.status} ${verifyText}`
-    );
-  }
-
-  const member =
-    JSON.parse(verifyText);
-
-  const rolePresent =
-    Array.isArray(
-      member.roles
-    ) &&
-    member.roles.includes(
-      roleId
-    );
-
   console.log(
-    "Paid role actually present:",
-    rolePresent
-  );
-
-  if (!rolePresent) {
-    throw new Error(
-      `Discord returned success but role ${roleId} is not present`
-    );
-  }
-
-  console.log(
-    "Pitchside Pass role successfully assigned and verified:",
+    "Pitchside Pass role assigned:",
     discordId
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/*                              REMOVE ROLE                                    */
-/* -------------------------------------------------------------------------- */
 
 async function removeDiscordRole(
   discordId: string
@@ -611,7 +264,6 @@ async function removeDiscordRole(
     `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
     {
       method: "DELETE",
-
       headers: {
         Authorization:
           `Bot ${botToken}`,
@@ -625,12 +277,6 @@ async function removeDiscordRole(
   const responseText =
     await response.text();
 
-  console.log(
-    "Discord role removal response:",
-    response.status,
-    responseText
-  );
-
   if (
     !response.ok &&
     response.status !== 404
@@ -641,13 +287,13 @@ async function removeDiscordRole(
   }
 
   console.log(
-    "Pitchside Pass role successfully removed:",
+    "Pitchside Pass role removed:",
     discordId
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*                           GET DISCORD USER                                  */
+/* SUPABASE                                                                   */
 /* -------------------------------------------------------------------------- */
 
 async function getDiscordUser(
@@ -683,7 +329,7 @@ async function getDiscordUser(
 }
 
 /* -------------------------------------------------------------------------- */
-/*                         WEBHOOK DEDUPLICATION                               */
+/* WEBHOOK DEDUPLICATION                                                      */
 /* -------------------------------------------------------------------------- */
 
 async function webhookAlreadyProcessed(
@@ -740,21 +386,21 @@ async function markWebhookProcessed(
   }
 
   console.log(
-    "Webhook marked as processed:",
+    "Webhook processed:",
+    eventType,
     eventId
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                  WEBHOOK                                    */
+/* WEBHOOK                                                                    */
 /* -------------------------------------------------------------------------- */
 
 export async function POST(
   request: NextRequest
 ) {
   const webhookSecret =
-    process.env
-      .STRIPE_WEBHOOK_SECRET;
+    process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
     return NextResponse.json(
@@ -788,7 +434,8 @@ export async function POST(
   const body =
     await request.text();
 
-  let event: Stripe.Event;
+  let event: Stripe.Event | null =
+    null;
 
   try {
     event =
@@ -814,11 +461,17 @@ export async function POST(
     );
   }
 
-  console.log(
-    "Stripe webhook received:",
-    event.type,
-    event.id
-  );
+  if (!event) {
+    return NextResponse.json(
+      {
+        error:
+          "Unable to process Stripe event",
+      },
+      {
+        status: 400,
+      }
+    );
+  }
 
   try {
     const duplicate =
@@ -827,11 +480,6 @@ export async function POST(
       );
 
     if (duplicate) {
-      console.log(
-        "Duplicate Stripe webhook ignored:",
-        event.id
-      );
-
       return NextResponse.json({
         received: true,
         duplicate: true,
@@ -839,7 +487,7 @@ export async function POST(
     }
 
     /* ---------------------------------------------------------------------- */
-    /*                           SUCCESSFUL CHECKOUT                            */
+    /* SUCCESSFUL CHECKOUT                                                    */
     /* ---------------------------------------------------------------------- */
 
     if (
@@ -851,8 +499,7 @@ export async function POST(
           .object as Stripe.Checkout.Session;
 
       const discordId =
-        checkoutSession
-          .metadata
+        checkoutSession.metadata
           ?.discordId ??
         checkoutSession
           .client_reference_id;
@@ -863,48 +510,25 @@ export async function POST(
         );
       }
 
-      console.log(
-        "Successful checkout for Discord user:",
-        discordId
-      );
-
-      /*
-       * Load the user's stored Discord OAuth credentials.
-       */
       let discordUser =
         await getDiscordUser(
           discordId
         );
 
-      /*
-       * Make sure the OAuth access token is still valid.
-       *
-       * If it has expired or is about to expire, this automatically
-       * uses the refresh token and updates Supabase.
-       */
       discordUser =
         await ensureValidDiscordToken(
           discordUser
         );
 
-      /*
-       * Automatically add them to the server.
-       */
       await addDiscordMember(
         discordId,
         discordUser.discord_access_token
       );
 
-      /*
-       * Assign paid membership role.
-       */
       await addDiscordRole(
         discordId
       );
 
-      /*
-       * Store Stripe customer and subscription IDs.
-       */
       const subscriptionId =
         typeof checkoutSession
           .subscription ===
@@ -917,8 +541,7 @@ export async function POST(
 
       const customerId =
         typeof checkoutSession
-          .customer ===
-        "string"
+          .customer === "string"
           ? checkoutSession
               .customer
           : checkoutSession
@@ -960,7 +583,7 @@ export async function POST(
     }
 
     /* ---------------------------------------------------------------------- */
-    /*                         SUBSCRIPTION ENDED                               */
+    /* SUBSCRIPTION ENDED                                                     */
     /* ---------------------------------------------------------------------- */
 
     if (
@@ -972,8 +595,7 @@ export async function POST(
           .object as Stripe.Subscription;
 
       let discordId =
-        subscription
-          .metadata
+        subscription.metadata
           ?.discordId;
 
       if (!discordId) {
@@ -1006,11 +628,6 @@ export async function POST(
       }
 
       if (discordId) {
-        console.log(
-          "Subscription ended for Discord user:",
-          discordId
-        );
-
         await removeDiscordRole(
           discordId
         );
