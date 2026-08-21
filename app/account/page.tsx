@@ -30,6 +30,9 @@ export default function AccountPage() {
   const [portalLoading, setPortalLoading] =
     useState(false);
 
+  const [termsAccepted, setTermsAccepted] =
+    useState(false);
+
   useEffect(() => {
     if (status === "authenticated") {
       loadSubscription();
@@ -55,13 +58,23 @@ export default function AccountPage() {
 
       setSubscription(data);
     } catch (error) {
-      console.error("Failed to load subscription:", error);
+      console.error(
+        "Failed to load subscription:",
+        error
+      );
     } finally {
       setSubscriptionLoading(false);
     }
   }
 
   async function handleSubscribe() {
+    if (!termsAccepted) {
+      alert(
+        "Please agree to the Terms & Conditions before continuing."
+      );
+      return;
+    }
+
     try {
       setCheckoutLoading(true);
 
@@ -72,7 +85,10 @@ export default function AccountPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Checkout failed to start.");
+        alert(
+          data.error ||
+            "Checkout failed to start."
+        );
         return;
       }
 
@@ -91,9 +107,12 @@ export default function AccountPage() {
     try {
       setPortalLoading(true);
 
-      const response = await fetch("/api/customer-portal", {
-        method: "POST",
-      });
+      const response = await fetch(
+        "/api/customer-portal",
+        {
+          method: "POST",
+        }
+      );
 
       const data = await response.json();
 
@@ -116,22 +135,24 @@ export default function AccountPage() {
     }
   }
 
-  function formatDate(timestamp?: number | null) {
+  function formatDate(
+    timestamp?: number | null
+  ) {
     if (!timestamp) return null;
 
-    return new Date(timestamp * 1000).toLocaleDateString(
-      "en-GB",
-      {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }
-    );
+    return new Date(
+      timestamp * 1000
+    ).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   }
 
   if (
     status === "loading" ||
-    (status === "authenticated" && subscriptionLoading)
+    (status === "authenticated" &&
+      subscriptionLoading)
   ) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#020604] text-white">
@@ -160,8 +181,8 @@ export default function AccountPage() {
           </h1>
 
           <p className="mt-4 leading-7 text-neutral-400">
-            Connect your Discord account to view and manage
-            your Pitchside Pass membership.
+            Connect your Discord account to view and
+            manage your Pitchside Pass membership.
           </p>
 
           <Link
@@ -296,16 +317,21 @@ export default function AccountPage() {
 
                 {subscription.scheduledToCancel &&
                   cancellationDate && (
-                    <div className="mt-6 rounded-xl border border-amber-500/15 bg-amber-500/[0.06] p-4 text-sm leading-6 text-amber-200">
-                      Your membership will not renew.
-                      Discord access remains active until{" "}
-                      {cancellationDate}.
+                    <div className="mt-6 rounded-xl border border-[#39bd76]/15 bg-[#39bd76]/[0.05] p-4 text-sm leading-6 text-neutral-300">
+                      Your current membership remains
+                      active until{" "}
+                      <span className="font-semibold text-white">
+                        {cancellationDate}
+                      </span>
+                      .
                     </div>
                   )}
 
                 <button
                   type="button"
-                  onClick={handleManageSubscription}
+                  onClick={
+                    handleManageSubscription
+                  }
                   disabled={portalLoading}
                   className="mt-7 flex h-14 w-full items-center justify-center rounded-lg bg-[#176b3f] text-sm font-bold transition hover:bg-[#208151] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -315,12 +341,13 @@ export default function AccountPage() {
                 </button>
 
                 <p className="mt-3 text-center text-xs text-neutral-600">
-                  Update your card, view invoices or manage
-                  renewal securely through Stripe.
+                  Manage billing and membership securely
+                  through Stripe.
                 </p>
               </>
             ) : (
               <>
+                {/* PLAN */}
                 <div className="mt-7 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
                   <div className="flex items-end gap-2">
                     <span className="text-4xl font-bold">
@@ -332,6 +359,12 @@ export default function AccountPage() {
                     </span>
                   </div>
 
+                  <p className="mt-2 text-xs text-neutral-500">
+                    Renews monthly until cancelled.
+                    Manage your membership anytime from
+                    your account.
+                  </p>
+
                   <div className="mt-5 space-y-3 text-sm text-neutral-400">
                     <Included text="24/7 home event monitoring" />
                     <Included text="Instant Discord alerts" />
@@ -340,21 +373,76 @@ export default function AccountPage() {
                   </div>
                 </div>
 
+                {/* CONSENT */}
+                <label className="mt-6 flex cursor-pointer items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-4">
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(event) =>
+                      setTermsAccepted(
+                        event.target.checked
+                      )
+                    }
+                    className="mt-1 h-4 w-4 shrink-0 accent-[#39bd76]"
+                  />
+
+                  <span className="text-xs leading-5 text-neutral-400">
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      className="font-medium text-neutral-200 underline underline-offset-2 hover:text-white"
+                    >
+                      Terms & Conditions
+                    </Link>{" "}
+                    and request immediate access to
+                    Pitchside Pass.
+                  </span>
+                </label>
+
+                {/* CHECKOUT */}
                 <button
                   type="button"
                   onClick={handleSubscribe}
-                  disabled={checkoutLoading}
-                  className="mt-7 flex h-14 w-full items-center justify-center rounded-lg bg-[#176b3f] text-sm font-bold transition hover:bg-[#208151] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    checkoutLoading ||
+                    !termsAccepted
+                  }
+                  className="mt-5 flex h-14 w-full items-center justify-center rounded-lg bg-[#176b3f] text-sm font-bold transition hover:bg-[#208151] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {checkoutLoading
                     ? "OPENING CHECKOUT..."
                     : "GET MUFC PITCHSIDE PASS"}
                 </button>
+
+                {/* POLICY LINKS */}
+                <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[11px] text-neutral-600">
+                  <Link
+                    href="/terms"
+                    className="transition hover:text-neutral-300"
+                  >
+                    Terms
+                  </Link>
+
+                  <Link
+                    href="/privacy"
+                    className="transition hover:text-neutral-300"
+                  >
+                    Privacy
+                  </Link>
+
+                  <Link
+                    href="/refunds"
+                    className="transition hover:text-neutral-300"
+                  >
+                    Refund & Cancellation Policy
+                  </Link>
+                </div>
               </>
             )}
           </div>
 
-          {/* DISCORD CARD */}
+          {/* DISCORD */}
           <div className="rounded-[26px] border border-white/[0.08] bg-[#07100c] p-7">
             <p className="text-xs font-bold uppercase tracking-[0.15em] text-neutral-500">
               Discord
@@ -362,16 +450,18 @@ export default function AccountPage() {
 
             <div className="mt-5 flex items-center gap-4">
               {session?.user?.image ? (
-  <img
-    src={session.user.image}
-    alt="Discord avatar"
-    width={54}
-    height={54}
-    className="h-[54px] w-[54px] rounded-full object-cover"
-  />
-) : (
+                <img
+                  src={session.user.image}
+                  alt="Discord avatar"
+                  width={54}
+                  height={54}
+                  className="h-[54px] w-[54px] rounded-full object-cover"
+                />
+              ) : (
                 <div className="flex h-[54px] w-[54px] items-center justify-center rounded-full bg-white/[0.05] text-lg font-bold text-neutral-400">
-                  {session?.user?.name?.charAt(0) || "D"}
+                  {session?.user?.name?.charAt(
+                    0
+                  ) || "D"}
                 </div>
               )}
 
@@ -421,7 +511,7 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* ACCESS INFO */}
+        {/* ACCESS */}
         <div className="mt-6 rounded-[26px] border border-white/[0.08] bg-[#07100c] p-7 sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-neutral-500">
             Your Access
@@ -430,38 +520,82 @@ export default function AccountPage() {
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             <AccessItem
               title="Discord alerts"
-              active={Boolean(subscription?.active)}
+              active={Boolean(
+                subscription?.active
+              )}
             />
 
             <AccessItem
               title="Direct event links"
-              active={Boolean(subscription?.active)}
+              active={Boolean(
+                subscription?.active
+              )}
             />
 
             <AccessItem
               title="Block availability"
-              active={Boolean(subscription?.active)}
+              active={Boolean(
+                subscription?.active
+              )}
             />
           </div>
         </div>
 
-        <div className="mt-8 text-center">
+        {/* FOOTER LINKS */}
+        <div className="mt-10 flex flex-col items-center gap-4 text-center">
           <Link
             href="/"
-            className="text-sm text-neutral-600 transition hover:text-white"
+            className="text-sm text-neutral-500 transition hover:text-white"
           >
             ← Back to Pitchside Pass
           </Link>
+
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-neutral-700">
+            <Link
+              href="/terms"
+              className="transition hover:text-neutral-400"
+            >
+              Terms
+            </Link>
+
+            <Link
+              href="/privacy"
+              className="transition hover:text-neutral-400"
+            >
+              Privacy
+            </Link>
+
+            <Link
+              href="/refunds"
+              className="transition hover:text-neutral-400"
+            >
+              Refunds & Cancellation
+            </Link>
+
+            <Link
+              href="/contact"
+              className="transition hover:text-neutral-400"
+            >
+              Contact
+            </Link>
+          </div>
         </div>
       </section>
     </main>
   );
 }
 
-function Included({ text }: { text: string }) {
+function Included({
+  text,
+}: {
+  text: string;
+}) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[#39bd76]">✓</span>
+      <span className="text-[#39bd76]">
+        ✓
+      </span>
+
       <span>{text}</span>
     </div>
   );
