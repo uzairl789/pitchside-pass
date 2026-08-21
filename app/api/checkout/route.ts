@@ -9,6 +9,10 @@ const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY!
 );
 
+const APP_URL =
+  process.env.NEXTAUTH_URL ||
+  "https://pitchsidepass.co.uk";
+
 export async function POST() {
   try {
     const session =
@@ -77,6 +81,12 @@ export async function POST() {
       );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | PREVENT DUPLICATE SUBSCRIPTIONS
+    |--------------------------------------------------------------------------
+    */
+
     if (
       discordUser?.stripe_subscription_id
     ) {
@@ -101,7 +111,7 @@ export async function POST() {
           )
         ) {
           console.log(
-            "Duplicate subscription prevented for Discord user:",
+            "Duplicate subscription prevented:",
             discordId,
             existingSubscription.id,
             existingSubscription.status
@@ -122,30 +132,38 @@ export async function POST() {
         }
       } catch (error) {
         /*
-         * If Stripe says the subscription no longer exists,
-         * clear the stale Supabase reference and allow checkout.
+         * If the stored Stripe subscription no longer exists,
+         * clear the stale reference and allow a fresh checkout.
          */
-
         if (
-          error instanceof Stripe.errors.StripeInvalidRequestError
+          error instanceof
+          Stripe.errors.StripeInvalidRequestError
         ) {
           console.log(
-            "Stored Stripe subscription no longer exists. Clearing stale reference:",
+            "Stored Stripe subscription is stale. Clearing:",
             discordUser.stripe_subscription_id
           );
 
-          await supabaseAdmin
-            .from("discord_users")
-            .update({
-              stripe_subscription_id:
-                null,
-              updated_at:
-                new Date().toISOString(),
-            })
-            .eq(
-              "discord_id",
-              discordId
+          const { error: clearError } =
+            await supabaseAdmin
+              .from("discord_users")
+              .update({
+                stripe_subscription_id:
+                  null,
+                updated_at:
+                  new Date().toISOString(),
+              })
+              .eq(
+                "discord_id",
+                discordId
+              );
+
+          if (clearError) {
+            console.error(
+              "Failed to clear stale subscription:",
+              clearError
             );
+          }
         } else {
           throw error;
         }
@@ -154,7 +172,7 @@ export async function POST() {
 
     /*
     |--------------------------------------------------------------------------
-    | CREATE CHECKOUT
+    | CREATE STRIPE CHECKOUT SESSION
     |--------------------------------------------------------------------------
     */
 
@@ -170,6 +188,10 @@ export async function POST() {
           },
         ],
 
+        /*
+         * This connects the Stripe checkout back to
+         * the logged-in Discord user.
+         */
         client_reference_id:
           discordId,
 
@@ -177,27 +199,52 @@ export async function POST() {
           discordId,
         },
 
+        /*
+         * Also put Discord ID directly onto the
+         * Stripe subscription itself.
+         */
         subscription_data: {
           metadata: {
             discordId,
           },
         },
 
-        customer_email:
-          session.user.email ??
-          undefined,
+        /*
+         * Reuse an existing Stripe customer when possible.
+         * This avoids creating unnecessary duplicate customers.
+         */
+        ...(discordUser?.stripe_customer_id
+          ? {
+              customer:
+                discordUser.stripe_customer_id,
+            }
+          : session.user.email
+            ? {
+                customer_email:
+                  session.user.email,
+              }
+            : {}),
 
         success_url:
-          "http://localhost:3000/account?success=true",
+          `${APP_URL}/account?success=true`,
 
         cancel_url:
-          "http://localhost:3000/account?cancelled=true",
+          `${APP_URL}/account?cancelled=true`,
+
+        allow_promotion_codes: false,
+
+        billing_address_collection:
+          "auto",
       });
 
     console.log(
-      "Stripe Checkout created for Discord user:",
-      discordId,
+      "Stripe Checkout created:",
       checkoutSession.id
+    );
+
+    console.log(
+      "Discord user:",
+      discordId
     );
 
     return NextResponse.json({
