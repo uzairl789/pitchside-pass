@@ -2,6 +2,10 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+type DiscordProfile = {
+  id: string;
+};
+
 export const authOptions: NextAuthOptions = {
   providers: [
     DiscordProvider({
@@ -23,16 +27,21 @@ export const authOptions: NextAuthOptions = {
        * account/profile will only exist during a fresh Discord login.
        */
 
-      if (profile?.id) {
-        token.discordId = String(profile.id);
+      const discordProfile =
+        profile && "id" in profile
+          ? (profile as DiscordProfile)
+          : null;
+
+      if (discordProfile?.id) {
+        token.discordId = String(discordProfile.id);
       }
 
       if (
         account?.provider === "discord" &&
-        profile?.id &&
+        discordProfile?.id &&
         account.access_token
       ) {
-        const discordId = String(profile.id);
+        const discordId = String(discordProfile.id);
 
         console.log("---- FRESH DISCORD OAUTH ----");
         console.log("Discord ID:", discordId);
@@ -56,6 +65,7 @@ export const authOptions: NextAuthOptions = {
           .upsert(
             {
               discord_id: discordId,
+
               discord_access_token:
                 account.access_token,
 
