@@ -134,14 +134,13 @@ export default function Home() {
                   <div className="absolute left-1/2 top-3 z-20 h-[23px] w-[78px] -translate-x-1/2 rounded-full bg-black" />
 
                   <Image
-                    src="/alerts.jpeg?v=10"
-                    alt="Pitchside Pass alerts"
-                    fill
-                    sizes="(max-width: 640px) 300px, 330px"
-                    priority
-                    unoptimized
-                    className="object-cover object-top"
-                  />
+  src="/alerts.jpeg"
+  alt="Pitchside Pass alerts"
+  fill
+  sizes="(max-width: 640px) 300px, 330px"
+  priority
+  className="object-cover object-top"
+/>
 
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
                 </div>
