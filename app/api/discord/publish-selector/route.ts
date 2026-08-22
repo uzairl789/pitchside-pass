@@ -14,12 +14,36 @@ export async function POST(
   try {
     /*
     |--------------------------------------------------------------------------
-    | ADMIN PROTECTION
+    | DEBUG AUTH
     |--------------------------------------------------------------------------
     */
 
     const authorization =
       request.headers.get("authorization");
+
+    console.log(
+      "Selector secret exists:",
+      Boolean(
+        process.env.DISCORD_SELECTOR_SECRET
+      )
+    );
+
+    console.log(
+      "Authorization header exists:",
+      Boolean(authorization)
+    );
+
+    console.log(
+      "Authorization matches:",
+      authorization ===
+        `Bearer ${process.env.DISCORD_SELECTOR_SECRET}`
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN PROTECTION
+    |--------------------------------------------------------------------------
+    */
 
     if (
       !SELECTOR_SECRET ||
@@ -35,6 +59,12 @@ export async function POST(
         }
       );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BOT TOKEN CHECK
+    |--------------------------------------------------------------------------
+    */
 
     if (!BOT_TOKEN) {
       return NextResponse.json(
@@ -55,102 +85,97 @@ export async function POST(
     */
 
     const message = {
-      embeds: [
+  embeds: [
+    {
+      title: "Choose your ticket alerts",
+
+      description:
+        "Personalise the ticket alerts you receive by selecting your preferences below. You’ll receive an @ mention when tickets matching your selected preference are released on the site!",
+
+      color: 2537552,
+
+      fields: [
         {
-          title:
-            "Choose your ticket alerts",
-
-          description:
-            "Personalise the ticket alerts you receive by selecting the options below.\n\nYou can change your selections at any time by pressing the same button again.",
-
-          color: 2537552,
-
-          fields: [
-            {
-              name: "📣 Atmosphere",
-              value:
-                "Alerts focused on seats and areas known for atmosphere.",
-              inline: false,
-            },
-            {
-              name: "🏟️ Stretty",
-              value:
-                "Alerts for Stretford End availability.",
-              inline: false,
-            },
-            {
-              name: "⭐ Pitchside",
-              value:
-                "Alerts for seats closer to the pitch.",
-              inline: false,
-            },
-            {
-              name: "👨‍👩‍👧‍👦 Big Drops",
-              value:
-                "Alerts when larger quantities of tickets become available.",
-              inline: false,
-            },
-          ],
-
-          footer: {
-            text:
-              "MUFC Pitchside Pass • Alert Preferences",
-          },
+          name: "📣 Atmosphere",
+          value:
+            "Alerts when tickets are released in the Lower Stretford End (W201–W212 + W101–W106).",
+          inline: false,
+        },
+        {
+          name: "🏟️ Stretty",
+          value:
+            "Alerts when tickets are released in any Stretford End block, lower or upper.",
+          inline: false,
+        },
+        {
+          name: "⭐ Pitchside",
+          value:
+            "Alerts when tickets are released in blocks by the pitch (N1, S1, E1, W1).",
+          inline: false,
+        },
+        {
+          name: "👨‍👩‍👧‍👦 Big Drops",
+          value:
+            "Alerts when more than 10 tickets are released in the same block.",
+          inline: false,
         },
       ],
+
+      footer: {
+        text: "MUFC Pitchside Pass • Alert Preferences",
+      },
+    },
+  ],
+
+  components: [
+    {
+      type: 1,
 
       components: [
         {
-          type: 1,
-
-          components: [
-            {
-              type: 2,
-              style: 2,
-              custom_id: "atmosphere",
-              label: "Atmosphere",
-              emoji: {
-                name: "📣",
-              },
-            },
-
-            {
-              type: 2,
-              style: 2,
-              custom_id: "stretty",
-              label: "Stretty",
-              emoji: {
-                name: "🏟️",
-              },
-            },
-
-            {
-              type: 2,
-              style: 2,
-              custom_id: "pitchside",
-              label: "Pitchside",
-              emoji: {
-                name: "⭐",
-              },
-            },
-
-            {
-              type: 2,
-              style: 2,
-              custom_id: "bigdrops",
-              label: "Big Drops",
-              emoji: {
-                name: "👨‍👩‍👧‍👦",
-              },
-            },
-          ],
+          type: 2,
+          style: 2,
+          custom_id: "atmosphere",
+          label: "Atmosphere",
+          emoji: {
+            name: "📣",
+          },
+        },
+        {
+          type: 2,
+          style: 2,
+          custom_id: "stretty",
+          label: "Stretty",
+          emoji: {
+            name: "🏟️",
+          },
+        },
+        {
+          type: 2,
+          style: 2,
+          custom_id: "pitchside",
+          label: "Pitchside",
+          emoji: {
+            name: "⭐",
+          },
+        },
+        {
+          type: 2,
+          style: 2,
+          custom_id: "bigdrops",
+          label: "Big Drops",
+          emoji: {
+            name: "👨‍👩‍👧‍👦",
+          },
         },
       ],
-    };
+    },
+  ],
+};
 
     /*
     |--------------------------------------------------------------------------
-    | SEND TO DISCORD
+    | SEND MESSAGE TO DISCORD
     |--------------------------------------------------------------------------
     */
 
@@ -176,6 +201,12 @@ export async function POST(
     const responseText =
       await response.text();
 
+    /*
+    |--------------------------------------------------------------------------
+    | DISCORD ERROR
+    |--------------------------------------------------------------------------
+    */
+
     if (!response.ok) {
       console.error(
         "Discord selector publish failed:",
@@ -187,8 +218,10 @@ export async function POST(
         {
           error:
             "Failed to publish role selector",
+
           discordStatus:
             response.status,
+
           details:
             responseText,
         },
@@ -197,6 +230,12 @@ export async function POST(
         }
       );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SUCCESS
+    |--------------------------------------------------------------------------
+    */
 
     const discordMessage =
       JSON.parse(responseText);
@@ -208,8 +247,10 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+
       messageId:
         discordMessage.id,
+
       channelId:
         CHANNEL_ID,
     });
@@ -231,4 +272,3 @@ export async function POST(
       }
     );
   }
-}
