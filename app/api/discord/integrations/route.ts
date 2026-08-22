@@ -17,11 +17,9 @@ const PAID_ROLE_ID =
 const PUBLIC_KEY =
   process.env.DISCORD_PUBLIC_KEY!;
 
-/*
-|--------------------------------------------------------------------------
-| SUPPORT CONFIG
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* SUPPORT CONFIG                                                             */
+/* -------------------------------------------------------------------------- */
 
 const SUPPORT_CATEGORY_ID =
   "1251695418358759504";
@@ -29,11 +27,9 @@ const SUPPORT_CATEGORY_ID =
 const SUPPORT_ADMIN_USER_ID =
   "1063145913415106681";
 
-/*
-|--------------------------------------------------------------------------
-| ALERT ROLE CONFIG
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* ALERT ROLE CONFIG                                                          */
+/* -------------------------------------------------------------------------- */
 
 const ROLE_MAP: Record<
   string,
@@ -44,56 +40,69 @@ const ROLE_MAP: Record<
 > = {
   atmosphere: {
     name: "Atmosphere",
-    roleId:
-      "1243770205273063435",
+    roleId: "1243770205273063435",
   },
 
   stretty: {
     name: "Stretty",
-    roleId:
-      "1243770393811095573",
+    roleId: "1243770393811095573",
   },
 
   pitchside: {
     name: "Pitchside",
-    roleId:
-      "1243770318116356148",
+    roleId: "1243770318116356148",
   },
 
   bigdrops: {
     name: "Big Drops",
-    roleId:
-      "1243770359644160022",
+    roleId: "1243770359644160022",
   },
 };
 
-/*
-|--------------------------------------------------------------------------
-| DISCORD PERMISSION FLAGS
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* DISCORD PERMISSION FLAGS                                                   */
+/* -------------------------------------------------------------------------- */
 
-const VIEW_CHANNEL = "1024";
-const SEND_MESSAGES = "2048";
-const EMBED_LINKS = "16384";
-const ATTACH_FILES = "32768";
+const MANAGE_CHANNELS = BigInt(16);
+const VIEW_CHANNEL = BigInt(1024);
+const SEND_MESSAGES = BigInt(2048);
+const EMBED_LINKS = BigInt(16384);
+const ATTACH_FILES = BigInt(32768);
 const READ_MESSAGE_HISTORY =
-  "65536";
+  BigInt(65536);
 
+/*
+ * Normal ticket member permissions.
+ */
 const MEMBER_ALLOW_PERMISSIONS =
   (
-    BigInt(VIEW_CHANNEL) |
-    BigInt(SEND_MESSAGES) |
-    BigInt(EMBED_LINKS) |
-    BigInt(ATTACH_FILES) |
-    BigInt(READ_MESSAGE_HISTORY)
+    VIEW_CHANNEL |
+    SEND_MESSAGES |
+    EMBED_LINKS |
+    ATTACH_FILES |
+    READ_MESSAGE_HISTORY
   ).toString();
 
 /*
-|--------------------------------------------------------------------------
-| VERIFY DISCORD REQUEST
-|--------------------------------------------------------------------------
-*/
+ * Bot gets the same permissions PLUS Manage Channels.
+ *
+ * This is important because the ticket uses custom
+ * permission overwrites and therefore should not rely
+ * entirely on inherited category permissions.
+ */
+const BOT_ALLOW_PERMISSIONS =
+  (
+    MANAGE_CHANNELS |
+    VIEW_CHANNEL |
+    SEND_MESSAGES |
+    EMBED_LINKS |
+    ATTACH_FILES |
+    READ_MESSAGE_HISTORY
+  ).toString();
+
+/* -------------------------------------------------------------------------- */
+/* VERIFY DISCORD REQUEST                                                     */
+/* -------------------------------------------------------------------------- */
 
 function verifyDiscordRequest(
   rawBody: string,
@@ -121,11 +130,9 @@ function verifyDiscordRequest(
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| MEMBER LOOKUP
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* MEMBER LOOKUP                                                              */
+/* -------------------------------------------------------------------------- */
 
 async function getGuildMember(
   userId: string
@@ -147,11 +154,9 @@ async function getGuildMember(
   return response.json();
 }
 
-/*
-|--------------------------------------------------------------------------
-| ROLE HELPERS
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* ROLE HELPERS                                                               */
+/* -------------------------------------------------------------------------- */
 
 async function addRole(
   userId: string,
@@ -214,11 +219,9 @@ async function removeRole(
   }
 }
 
-/*
-|--------------------------------------------------------------------------
-| GET BOT USER ID
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* GET BOT USER                                                               */
+/* -------------------------------------------------------------------------- */
 
 async function getBotUserId() {
   const response = await fetch(
@@ -240,24 +243,15 @@ async function getBotUserId() {
     );
   }
 
-  const bot = JSON.parse(
-    responseText
-  );
+  const bot =
+    JSON.parse(responseText);
 
   return String(bot.id);
 }
 
-/*
-|--------------------------------------------------------------------------
-| FIND EXISTING SUPPORT TICKET
-|--------------------------------------------------------------------------
-|
-| Every ticket is called ticket-pitchsidepass.
-|
-| The opener's Discord ID is stored in the channel topic,
-| which lets us prevent that user from opening multiple tickets.
-|
-*/
+/* -------------------------------------------------------------------------- */
+/* FIND EXISTING SUPPORT TICKET                                               */
+/* -------------------------------------------------------------------------- */
 
 async function findExistingTicket(
   userId: string
@@ -295,11 +289,9 @@ async function findExistingTicket(
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| CREATE SUPPORT TICKET
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* CREATE SUPPORT TICKET                                                      */
+/* -------------------------------------------------------------------------- */
 
 async function createSupportTicket(
   userId: string
@@ -314,7 +306,8 @@ async function createSupportTicket(
       channel:
         existingTicket,
 
-      alreadyExists: true,
+      alreadyExists:
+        true,
     };
   }
 
@@ -322,22 +315,26 @@ async function createSupportTicket(
     await getBotUserId();
 
   /*
-   * @everyone role ID is the guild ID.
+   * @everyone role ID is identical to the guild ID.
+   *
+   * We deny View Channel to everyone and then explicitly
+   * allow access for:
+   *
+   * - the customer
+   * - Pitchside Pass support
+   * - the Pitchside Pass bot
    */
   const permissionOverwrites = [
-    /*
-     * Hide from everybody.
-     */
+    /* @everyone */
     {
       id: GUILD_ID,
       type: 0,
-      deny: VIEW_CHANNEL,
+      deny:
+        VIEW_CHANNEL.toString(),
       allow: "0",
     },
 
-    /*
-     * Ticket opener.
-     */
+    /* Ticket opener */
     {
       id: userId,
       type: 1,
@@ -346,9 +343,7 @@ async function createSupportTicket(
       deny: "0",
     },
 
-    /*
-     * You.
-     */
+    /* Pitchside Pass support/admin */
     {
       id:
         SUPPORT_ADMIN_USER_ID,
@@ -360,13 +355,17 @@ async function createSupportTicket(
 
     /*
      * Pitchside Pass bot.
+     *
+     * IMPORTANT:
+     * Manage Channels is explicitly included so the bot
+     * can later delete the ticket using Close Ticket.
      */
     {
       id:
         botUserId,
       type: 1,
       allow:
-        MEMBER_ALLOW_PERMISSIONS,
+        BOT_ALLOW_PERMISSIONS,
       deny: "0",
     },
   ];
@@ -414,11 +413,16 @@ async function createSupportTicket(
   const channel =
     JSON.parse(responseText);
 
-  /*
-  |--------------------------------------------------------------------------
-  | SEND WELCOME MESSAGE INSIDE TICKET
-  |--------------------------------------------------------------------------
-  */
+  console.log(
+    "Support ticket created:",
+    channel.id,
+    "for user:",
+    userId
+  );
+
+  /* ------------------------------------------------------------------------ */
+  /* SEND WELCOME MESSAGE                                                     */
+  /* ------------------------------------------------------------------------ */
 
   const welcomeResponse =
     await fetch(
@@ -462,6 +466,7 @@ async function createSupportTicket(
               components: [
                 {
                   type: 2,
+
                   style: 4,
 
                   custom_id:
@@ -501,19 +506,54 @@ async function createSupportTicket(
 
   return {
     channel,
-    alreadyExists: false,
+    alreadyExists:
+      false,
   };
 }
 
-/*
-|--------------------------------------------------------------------------
-| DELETE SUPPORT TICKET
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* GET CHANNEL                                                                */
+/* -------------------------------------------------------------------------- */
+
+async function getDiscordChannel(
+  channelId: string
+) {
+  const response = await fetch(
+    `https://discord.com/api/v10/channels/${channelId}`,
+    {
+      headers: {
+        Authorization:
+          `Bot ${BOT_TOKEN}`,
+      },
+    }
+  );
+
+  const responseText =
+    await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to fetch support ticket: ${response.status} ${responseText}`
+    );
+  }
+
+  return JSON.parse(
+    responseText
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* DELETE SUPPORT TICKET                                                      */
+/* -------------------------------------------------------------------------- */
 
 async function deleteSupportTicket(
   channelId: string
 ) {
+  console.log(
+    "Attempting to close support ticket:",
+    channelId
+  );
+
   const response = await fetch(
     `https://discord.com/api/v10/channels/${channelId}`,
     {
@@ -537,13 +577,16 @@ async function deleteSupportTicket(
       `Unable to close support ticket: ${response.status} ${responseText}`
     );
   }
+
+  console.log(
+    "Support ticket closed:",
+    channelId
+  );
 }
 
-/*
-|--------------------------------------------------------------------------
-| INTERACTION ENDPOINT
-|--------------------------------------------------------------------------
-*/
+/* -------------------------------------------------------------------------- */
+/* INTERACTIONS ENDPOINT                                                      */
+/* -------------------------------------------------------------------------- */
 
 export async function POST(
   request: NextRequest
@@ -592,25 +635,25 @@ export async function POST(
   const interaction =
     JSON.parse(rawBody);
 
-  /*
-  |--------------------------------------------------------------------------
-  | DISCORD VERIFICATION PING
-  |--------------------------------------------------------------------------
-  */
+  /* ------------------------------------------------------------------------ */
+  /* DISCORD PING                                                             */
+  /* ------------------------------------------------------------------------ */
 
-  if (interaction.type === 1) {
+  if (
+    interaction.type === 1
+  ) {
     return NextResponse.json({
       type: 1,
     });
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | BUTTON INTERACTIONS
-  |--------------------------------------------------------------------------
-  */
+  /* ------------------------------------------------------------------------ */
+  /* BUTTON INTERACTION                                                       */
+  /* ------------------------------------------------------------------------ */
 
-  if (interaction.type === 3) {
+  if (
+    interaction.type === 3
+  ) {
     try {
       const customId =
         interaction.data
@@ -633,11 +676,9 @@ export async function POST(
         });
       }
 
-      /*
-      |--------------------------------------------------------------------------
-      | OPEN SUPPORT TICKET
-      |--------------------------------------------------------------------------
-      */
+      /* -------------------------------------------------------------------- */
+      /* OPEN SUPPORT TICKET                                                  */
+      /* -------------------------------------------------------------------- */
 
       if (
         customId ===
@@ -675,11 +716,9 @@ export async function POST(
         });
       }
 
-      /*
-      |--------------------------------------------------------------------------
-      | CLOSE SUPPORT TICKET
-      |--------------------------------------------------------------------------
-      */
+      /* -------------------------------------------------------------------- */
+      /* CLOSE SUPPORT TICKET                                                 */
+      /* -------------------------------------------------------------------- */
 
       if (
         customId ===
@@ -701,43 +740,15 @@ export async function POST(
           });
         }
 
-        /*
-         * Check this is actually a support ticket before deleting it.
-         */
-        const channelResponse =
-          await fetch(
-            `https://discord.com/api/v10/channels/${channelId}`,
-            {
-              headers: {
-                Authorization:
-                  `Bot ${BOT_TOKEN}`,
-              },
-            }
-          );
-
-        const channelText =
-          await channelResponse.text();
-
-        if (
-          !channelResponse.ok
-        ) {
-          return NextResponse.json({
-            type: 4,
-
-            data: {
-              content:
-                "Unable to verify this support ticket.",
-
-              flags: 64,
-            },
-          });
-        }
-
         const channel =
-          JSON.parse(
-            channelText
+          await getDiscordChannel(
+            channelId
           );
 
+        /*
+         * Safety check: only our actual support ticket
+         * channels can be deleted.
+         */
         if (
           channel.parent_id !==
             SUPPORT_CATEGORY_ID ||
@@ -756,9 +767,6 @@ export async function POST(
           });
         }
 
-        /*
-         * Only the opener or you can close it.
-         */
         const openerId =
           typeof channel.topic ===
             "string" &&
@@ -771,12 +779,21 @@ export async function POST(
               )
             : null;
 
+        /*
+         * Ticket can only be closed by:
+         *
+         * - the customer who opened it
+         * - Pitchside Pass support
+         */
         const allowedToClose =
-          userId === openerId ||
+          userId ===
+            openerId ||
           userId ===
             SUPPORT_ADMIN_USER_ID;
 
-        if (!allowedToClose) {
+        if (
+          !allowedToClose
+        ) {
           return NextResponse.json({
             type: 4,
 
@@ -805,11 +822,9 @@ export async function POST(
         });
       }
 
-      /*
-      |--------------------------------------------------------------------------
-      | ALERT ROLE SELECTOR
-      |--------------------------------------------------------------------------
-      */
+      /* -------------------------------------------------------------------- */
+      /* ALERT ROLE SELECTOR                                                  */
+      /* -------------------------------------------------------------------- */
 
       const role =
         ROLE_MAP[customId];
@@ -846,7 +861,8 @@ export async function POST(
       }
 
       /*
-       * Alert roles require the paid membership role.
+       * Alert preferences require an active
+       * MUFC Pitchside Pass membership.
        */
       const hasPaidRole =
         Array.isArray(
@@ -874,7 +890,9 @@ export async function POST(
           role.roleId
         );
 
-      if (alreadyHasRole) {
+      if (
+        alreadyHasRole
+      ) {
         await removeRole(
           userId,
           role.roleId
