@@ -78,8 +78,7 @@ async function refreshDiscordToken(
 
   const expiresAt = new Date(
     Date.now() +
-      Number(tokenData.expires_in) *
-        1000
+      Number(tokenData.expires_in) * 1000
   ).toISOString();
 
   const { error } =
@@ -157,18 +156,47 @@ async function ensureValidDiscordToken(
 }
 
 /* -------------------------------------------------------------------------- */
-/* DISCORD MEMBERSHIP                                                         */
+/* DISCORD HELPERS                                                            */
+/* -------------------------------------------------------------------------- */
+
+function getDiscordConfig() {
+  return {
+    guildId:
+      process.env.DISCORD_SERVER_ID!,
+
+    paidRoleId:
+      process.env.DISCORD_PAID_ROLE_ID!,
+
+    botToken:
+      process.env.DISCORD_BOT_TOKEN!,
+  };
+}
+
+function getAlertRoleIds() {
+  return (
+    process.env
+      .DISCORD_MUFC_ALERT_ROLE_IDS ??
+    ""
+  )
+    .split(",")
+    .map((roleId) =>
+      roleId.trim()
+    )
+    .filter(Boolean);
+}
+
+/* -------------------------------------------------------------------------- */
+/* ADD USER TO SERVER                                                         */
 /* -------------------------------------------------------------------------- */
 
 async function addDiscordMember(
   discordId: string,
   accessToken: string
 ) {
-  const guildId =
-    process.env.DISCORD_SERVER_ID!;
-
-  const botToken =
-    process.env.DISCORD_BOT_TOKEN!;
+  const {
+    guildId,
+    botToken,
+  } = getDiscordConfig();
 
   const response = await fetch(
     `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}`,
@@ -207,22 +235,24 @@ async function addDiscordMember(
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* ADD PAID ROLE                                                              */
+/* -------------------------------------------------------------------------- */
+
 async function addDiscordRole(
   discordId: string
 ) {
-  const guildId =
-    process.env.DISCORD_SERVER_ID!;
-
-  const roleId =
-    process.env.DISCORD_PAID_ROLE_ID!;
-
-  const botToken =
-    process.env.DISCORD_BOT_TOKEN!;
+  const {
+    guildId,
+    paidRoleId,
+    botToken,
+  } = getDiscordConfig();
 
   const response = await fetch(
-    `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
+    `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${paidRoleId}`,
     {
       method: "PUT",
+
       headers: {
         Authorization:
           `Bot ${botToken}`,
@@ -243,27 +273,29 @@ async function addDiscordRole(
   }
 
   console.log(
-    "Pitchside Pass role assigned:",
+    "MUFC Pitchside Pass role assigned:",
     discordId
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* REMOVE ONE ROLE                                                            */
+/* -------------------------------------------------------------------------- */
+
 async function removeDiscordRole(
-  discordId: string
+  discordId: string,
+  roleId: string
 ) {
-  const guildId =
-    process.env.DISCORD_SERVER_ID!;
-
-  const roleId =
-    process.env.DISCORD_PAID_ROLE_ID!;
-
-  const botToken =
-    process.env.DISCORD_BOT_TOKEN!;
+  const {
+    guildId,
+    botToken,
+  } = getDiscordConfig();
 
   const response = await fetch(
     `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
     {
       method: "DELETE",
+
       headers: {
         Authorization:
           `Bot ${botToken}`,
@@ -277,23 +309,79 @@ async function removeDiscordRole(
   const responseText =
     await response.text();
 
+  /*
+   * 404 is fine.
+   *
+   * It means the member or role association
+   * no longer exists.
+   */
   if (
     !response.ok &&
     response.status !== 404
   ) {
     throw new Error(
-      `Discord role removal failed: ${response.status} ${responseText}`
+      `Discord role removal failed for ${roleId}: ${response.status} ${responseText}`
+    );
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* REMOVE ALL SUBSCRIPTION-DEPENDENT ROLES                                    */
+/* -------------------------------------------------------------------------- */
+
+async function removeSubscriptionRoles(
+  discordId: string
+) {
+  const {
+    paidRoleId,
+  } = getDiscordConfig();
+
+  const alertRoleIds =
+    getAlertRoleIds();
+
+  /*
+   * Paid membership role +
+   * every selectable alert role.
+   */
+  const rolesToRemove = [
+    paidRoleId,
+    ...alertRoleIds,
+  ];
+
+  /*
+   * Remove duplicates just in case.
+   */
+  const uniqueRoles = [
+    ...new Set(rolesToRemove),
+  ];
+
+  console.log(
+    "Removing subscription roles from:",
+    discordId
+  );
+
+  for (
+    const roleId of uniqueRoles
+  ) {
+    await removeDiscordRole(
+      discordId,
+      roleId
+    );
+
+    console.log(
+      "Removed Discord role:",
+      roleId
     );
   }
 
   console.log(
-    "Pitchside Pass role removed:",
+    "All MUFC subscription roles removed:",
     discordId
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/* SUPABASE                                                                   */
+/* SUPABASE USER                                                              */
 /* -------------------------------------------------------------------------- */
 
 async function getDiscordUser(
@@ -393,14 +481,15 @@ async function markWebhookProcessed(
 }
 
 /* -------------------------------------------------------------------------- */
-/* WEBHOOK                                                                    */
+/* STRIPE WEBHOOK                                                             */
 /* -------------------------------------------------------------------------- */
 
 export async function POST(
   request: NextRequest
 ) {
   const webhookSecret =
-    process.env.STRIPE_WEBHOOK_SECRET;
+    process.env
+      .STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
     return NextResponse.json(
@@ -434,8 +523,9 @@ export async function POST(
   const body =
     await request.text();
 
-  let event: Stripe.Event | null =
-    null;
+  let event:
+    | Stripe.Event
+    | null = null;
 
   try {
     event =
@@ -474,6 +564,12 @@ export async function POST(
   }
 
   try {
+    /*
+    |--------------------------------------------------------------------------
+    | DUPLICATE PROTECTION
+    |--------------------------------------------------------------------------
+    */
+
     const duplicate =
       await webhookAlreadyProcessed(
         event.id
@@ -486,9 +582,11 @@ export async function POST(
       });
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* SUCCESSFUL CHECKOUT                                                    */
-    /* ---------------------------------------------------------------------- */
+    /*
+    |--------------------------------------------------------------------------
+    | CHECKOUT COMPLETED
+    |--------------------------------------------------------------------------
+    */
 
     if (
       event.type ===
@@ -499,7 +597,8 @@ export async function POST(
           .object as Stripe.Checkout.Session;
 
       const discordId =
-        checkoutSession.metadata
+        checkoutSession
+          .metadata
           ?.discordId ??
         checkoutSession
           .client_reference_id;
@@ -510,25 +609,41 @@ export async function POST(
         );
       }
 
+      /*
+       * Load Discord OAuth credentials.
+       */
       let discordUser =
         await getDiscordUser(
           discordId
         );
 
+      /*
+       * Refresh OAuth credentials if required.
+       */
       discordUser =
         await ensureValidDiscordToken(
           discordUser
         );
 
+      /*
+       * Add customer to server.
+       */
       await addDiscordMember(
         discordId,
-        discordUser.discord_access_token
+        discordUser
+          .discord_access_token
       );
 
+      /*
+       * Assign MUFC paid role.
+       */
       await addDiscordRole(
         discordId
       );
 
+      /*
+       * Save Stripe identifiers.
+       */
       const subscriptionId =
         typeof checkoutSession
           .subscription ===
@@ -541,7 +656,8 @@ export async function POST(
 
       const customerId =
         typeof checkoutSession
-          .customer === "string"
+          .customer ===
+        "string"
           ? checkoutSession
               .customer
           : checkoutSession
@@ -582,9 +698,11 @@ export async function POST(
       );
     }
 
-    /* ---------------------------------------------------------------------- */
-    /* SUBSCRIPTION ENDED                                                     */
-    /* ---------------------------------------------------------------------- */
+    /*
+    |--------------------------------------------------------------------------
+    | SUBSCRIPTION ACTUALLY ENDED
+    |--------------------------------------------------------------------------
+    */
 
     if (
       event.type ===
@@ -598,6 +716,9 @@ export async function POST(
         subscription.metadata
           ?.discordId;
 
+      /*
+       * Fallback to Supabase lookup.
+       */
       if (!discordId) {
         const {
           data,
@@ -628,10 +749,22 @@ export async function POST(
       }
 
       if (discordId) {
-        await removeDiscordRole(
+        /*
+         * Remove:
+         *
+         * MUFC Pitchside Pass
+         * Atmosphere
+         * Stretty
+         * Pitchside
+         * Big Drops
+         */
+        await removeSubscriptionRoles(
           discordId
         );
 
+        /*
+         * Clear stored active subscription.
+         */
         const {
           error: clearError,
         } =
@@ -658,6 +791,12 @@ export async function POST(
         }
       }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MARK SUCCESSFUL EVENT
+    |--------------------------------------------------------------------------
+    */
 
     await markWebhookProcessed(
       event.id,
